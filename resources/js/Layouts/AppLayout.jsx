@@ -1,18 +1,21 @@
-import Navbar from '@/Components/Layout/Navbar';
-import Sidebar from '@/Components/Layout/Sidebar';
-import Footer from '@/Components/Layout/Footer';
+import Sidebar from "@/Components/Layout/Sidebar/Sidebar";
 
 export default function AppLayout({ children }) {
+
     return (
-        <div className="flex min-h-screen bg-slate-100">
+
+        <div className="flex bg-slate-100">
+
             <Sidebar />
-            <div className="flex flex-col flex-1">
-                <Navbar />
-                <main className="flex-1 p-6">
-                    {children}
-                </main>
-                <Footer />
-            </div>
+
+            <main className="flex-1 lg:ml-72 transition-all duration-300">
+
+                {children}
+
+            </main>
+
         </div>
+
     );
+
 }
