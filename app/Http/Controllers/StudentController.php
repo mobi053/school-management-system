@@ -6,6 +6,7 @@ use App\Models\SchoolClass;
 use App\Models\Section;
 use App\Models\Student;
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -97,8 +98,10 @@ class StudentController extends Controller
     /**
      * Student profile.
      */
+
     public function show(Student $student)
     {
+        
         $student->load([
             'schoolClass',
             'section',

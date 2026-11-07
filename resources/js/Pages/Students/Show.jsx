@@ -1,4 +1,8 @@
 import { Head, Link } from "@inertiajs/react";
+import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
+import { Download } from "lucide-react";
+
 import AppLayout from "@/Layouts/AppLayout";
 
 function Info({ label, value }) {
@@ -20,6 +24,247 @@ function ProfileSection({ title, children }) {
         </div>
     );
 }
+
+
+
+function StudentIDCard({ student }) {
+    const cardStyle =
+        "relative flex h-[85.6mm] w-[54mm] flex-col overflow-hidden border border-slate-300 bg-white text-slate-800";
+
+
+    const downloadPDF = async () => {
+        const front = document.getElementById("student-id-card-front");
+        const back = document.getElementById("student-id-card-back");
+
+        if (!front || !back) {
+            alert("Student ID card sides could not be found.");
+            return;
+        }
+
+        try {
+            await document.fonts.ready;
+
+            // Wait for all card images to finish loading.
+            const images = [
+                ...front.querySelectorAll("img"),
+                ...back.querySelectorAll("img"),
+            ];
+
+            await Promise.all(
+                images.map((img) => {
+                    if (img.complete) return Promise.resolve();
+
+                    return new Promise((resolve) => {
+                        img.onload = resolve;
+                        img.onerror = resolve;
+                    });
+                })
+            );
+
+            // html-to-image uses the browser's SVG renderer instead of
+            // html2canvas's CSS color parser, avoiding the unsupported
+            // oklch() color error.
+            const captureCard = async (element) => {
+                return await toPng(element, {
+                    pixelRatio: 4,
+                    backgroundColor: "#ffffff",
+                    cacheBust: true,
+                    width: element.offsetWidth,
+                    height: element.offsetHeight,
+                });
+            };
+
+            const pdf = new jsPDF({
+                orientation: "portrait",
+                unit: "mm",
+                format: [54, 85.6],
+                compress: true,
+            });
+
+            // FRONT SIDE
+            const frontImage = await captureCard(front);
+            pdf.addImage(frontImage, "PNG", 0, 0, 54, 85.6);
+
+            // BACK SIDE
+            pdf.addPage([54, 85.6], "portrait");
+
+            const backImage = await captureCard(back);
+            pdf.addImage(backImage, "PNG", 0, 0, 54, 85.6);
+
+            pdf.save(`Student-ID-${student.admission_no || "Card"}.pdf`);
+        } catch (error) {
+            console.error("PDF generation error:", error);
+            alert(
+                "Unable to generate PDF. Please check the browser console for details."
+            );
+        }
+    };
+
+
+    return (
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="mb-5">
+                <h3 className="text-lg font-semibold">
+                    Student Identity Card
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    Portrait CR80 · 54 × 85.6 mm · Front and Back
+                </p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-8">
+
+                {/* ================= FRONT SIDE ================= */}
+                <div className="space-y-2">
+                    <p className="text-center text-sm font-semibold">
+                        Front Side
+                    </p>
+
+                    <div
+                        id="student-id-card-front"
+                        className={`${cardStyle} items-center`}
+                    >
+                        {/* School Header */}
+                        <div className="w-full bg-blue-900 px-2 py-4 text-center text-white">
+                            <h2 className="text-sm font-bold uppercase tracking-wide">
+                                School Name
+                            </h2>
+
+                        </div>
+
+                        {/* Student Photo */}
+                        <div className="mt-5 flex h-[35mm] w-[29mm] shrink-0 items-center justify-center overflow-hidden rounded-md border-2 border-blue-900 bg-slate-100">
+                            {student.photo ? (
+                                <img
+                                    src={`/storage/${student.photo}`}
+                                    alt={`${student.first_name} ${student.last_name}`}
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <span className="text-4xl font-bold text-slate-400">
+                                    {student.first_name?.charAt(0)}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Student Name */}
+                        <div className="mt-4 w-full px-2 text-center">
+                            <h3 className="text-sm font-bold uppercase leading-tight text-blue-950">
+                                {student.first_name} {student.last_name}
+                            </h3>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                {/* ================= BACK SIDE ================= */}
+            
+                <div className="space-y-2">
+                    <p className="text-center text-sm font-semibold">
+                        Back Side
+                    </p>
+
+                    <div
+                        id="student-id-card-back"
+                        className="relative flex h-[85.6mm] w-[54mm] flex-col overflow-hidden border border-slate-300 bg-white text-slate-800"
+                    >
+                        {/* Header */}
+                        <div className="shrink-0 bg-blue-900 px-2 py-3 text-center text-white">
+                            <h2 className="text-xs font-bold tracking-wider">
+                                STUDENT DETAILS
+                            </h2>
+                        </div>
+
+                        {/* Student Information */}
+                        <div className="flex-1 px-3 py-2 text-[8px] leading-tight">
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Student Name</p>
+                                <p className="font-bold uppercase">
+                                    {student.first_name} {student.last_name}
+                                </p>
+                            </div>
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Admission Number</p>
+                                <p className="font-semibold">{student.admission_no || "—"}</p>
+                            </div>
+
+                            <div className="mb-2 grid grid-cols-2 gap-2">
+                                <div>
+                                    <p className="text-[7px] text-slate-500">Class</p>
+                                    <p className="font-semibold">
+                                        {student.school_class?.name || "—"}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="text-[7px] text-slate-500">Section</p>
+                                    <p className="font-semibold">
+                                        {student.section?.name || "—"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Date of Birth</p>
+                                <p className="font-semibold">{student.date_of_birth || "—"}</p>
+                            </div>
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Gender</p>
+                                <p className="font-semibold capitalize">{student.gender || "—"}</p>
+                            </div>
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Father's Name</p>
+                                <p className="font-semibold">{student.father_name || "—"}</p>
+                            </div>
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Guardian Contact</p>
+                                <p className="font-semibold">
+                                    {student.guardian_phone || student.phone || "—"}
+                                </p>
+                            </div>
+
+                            <div className="mb-2">
+                                <p className="text-[7px] text-slate-500">Admission Date</p>
+                                <p className="font-semibold">{student.admission_date || "—"}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-[7px] text-slate-500">Address</p>
+                                <p className="font-semibold break-words">
+                                    {student.address || "—"}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="shrink-0 bg-blue-900 px-2 py-2 text-center text-[7px] text-white">
+                            If found, please return to school.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div className="mt-6 flex justify-center">
+            <button
+                type="button"
+                onClick={downloadPDF}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800"
+            >
+                <Download size={18} />
+                Download PDF
+            </button>
+        </div>
+        </div>
+    );
+}
+
+
 
 export default function Show({ student, photoUrl }) {
     return (
@@ -50,11 +295,14 @@ export default function Show({ student, photoUrl }) {
 
                 {/* Profile Header */}
                 <div className="flex flex-wrap items-center gap-5 rounded-xl border bg-card p-6 shadow-sm">
-                    {photoUrl ? (
-                        <img
-                            src={photoUrl}
+                    {student.photo ? (
+                       <img
+                            src={`/storage/${student.photo}`}
                             alt={student.first_name}
                             className="h-28 w-28 rounded-xl border object-cover"
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                            }}
                         />
                     ) : (
                         <div className="flex h-28 w-28 items-center justify-center rounded-xl bg-muted text-3xl font-semibold">
@@ -80,6 +328,9 @@ export default function Show({ student, photoUrl }) {
                         </span>
                     </div>
                 </div>
+
+                {/* Student ID Card */}
+                <StudentIDCard student={student} />
 
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
 
@@ -116,6 +367,8 @@ export default function Show({ student, photoUrl }) {
                         <Info label="Guardian Address" value={student.guardian_address} />
                     </ProfileSection>
                 </div>
+
+
 
                 {/* Recent Attendance */}
                 <ProfileSection title="Recent Attendance">
